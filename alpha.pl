@@ -23,7 +23,7 @@ my $majoritylock=1;
 my $urlbase="$site/threads/$threadid";
 my $daystartpage=int($daystartpost/25)+1;
 
-my $output="bbcode";
+my $output="html";
 
 # List of players
 my @players = (
@@ -78,6 +78,7 @@ my %playeraliases = (
 'astroboy' => 'Astroboy907',
 'comeagain' => 'Comeagain?',
 'comegain' => 'Comeagain?',
+'intel' => 'intell',
 'no-vote' => 'no vote'
 );
 
@@ -192,7 +193,7 @@ sub calcTiebreak {
 sub displayVoteLog
 {
 	my $votelog;
-	$votelog .= "[U]Voting Log[/U]";
+	$votelog .= "[U]Voting Log[/U]\n";
 	foreach my $vote (@votinglog2)
 	{
 		my $votelogline = "Post [URL=\"" . $vote->{'posturl'} . "\"]" . $vote->{'postnum'} . "[/URL] ". $vote->{'voter'} . " voted for " . $vote->{'votee'} ;
@@ -469,5 +470,6 @@ if ($output eq "html") {
 	print "$majoritymessage\n";
 	displayVotes();
 	displayVoteLog();
+	print $errors;
 }
 
