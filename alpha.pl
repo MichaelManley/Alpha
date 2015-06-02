@@ -23,7 +23,7 @@ my $majoritylock=1;
 my $urlbase="$site/threads/$threadid";
 my $daystartpage=int($daystartpost/25)+1;
 
-my $output="html";
+my $output="bbcode";
 
 # List of players
 my @players = (
@@ -192,7 +192,7 @@ sub calcTiebreak {
 sub displayVoteLog
 {
 	my $votelog;
-	$votelog .= "[U]Voting Log[\U]";
+	$votelog .= "[U]Voting Log[/U]";
 	foreach my $vote (@votinglog2)
 	{
 		my $votelogline = "Post [URL=\"" . $vote->{'posturl'} . "\"]" . $vote->{'postnum'} . "[/URL] ". $vote->{'voter'} . " voted for " . $vote->{'votee'} ;
@@ -438,7 +438,6 @@ $playerAliasSearch = join("|", sort(keys %playeraliases));
 
 #print $playerAliasSearch;
 
-$votinglog = "[U]Votes[/U]\n";
 # Process each page to strip out the votes, only keeps the last vote for each player
 my $page = $daystartpage;
 my $post = $daystartpost;
