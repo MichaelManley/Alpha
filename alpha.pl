@@ -7,6 +7,7 @@ use warnings;
 use LWP::Simple;
 use HTML::TreeBuilder;
 use HTML::Element;
+use Data::Dumper;
 
 # New game set players, playeraliases & threadid
 # Update daystartpost to post number of night time narrative and comment out dead players for each new day
@@ -21,6 +22,8 @@ my $majoritylock=1;
 # Don't change these
 my $urlbase="$site/threads/$threadid";
 my $daystartpage=int($daystartpost/25)+1;
+
+my $output="html";
 
 # List of players
 my @players = (
@@ -84,12 +87,14 @@ my $playerAliasSearch;
 my %voters = ();
 my $votinglog;
 my %votinglist = ();
+my @votinglog2 = ();
 my $maxvotes = 0;
 my $tiebreak = undef;
+my $errors;
 
 sub displayVotes {
 	my $totalvotes = 0;
-	print "[U]Potential Wolves[/U]\n";
+	print "[U]Votes[/U]\n";
 	# First, the tiebreak winner
 	if(defined($tiebreak)) {
 		print "[COLOR=\"Red\"]$tiebreak: " .scalar(@{$votinglist{$tiebreak}}) . " ", join(", ", @{$votinglist{$tiebreak}}), "[/COLOR]\n";
@@ -119,6 +124,48 @@ sub displayVotes {
 	}
 }
 
+sub htmlVotes
+{
+	my $totalvotes = 0;
+	my $display;
+	$display .= "<div><h2 class=\"voteHeader\">Current Votes</h2>\n";
+	# First, the tiebreak winner
+	$display .= "<ul>\n";
+	if(defined($tiebreak)) {
+		$display .= "<li class=\"voteList voteWinner\">$tiebreak: " . scalar(@{$votinglist{$tiebreak}}) . " " . join(", ", @{$votinglist{$tiebreak}}) . "</li>\n";
+		$totalvotes = scalar(@{$votinglist{$tiebreak}});
+		# Delete the tiebreak winner so we don't output twice
+		delete $votinglist{$tiebreak};
+	}
+	# Order the rest of the votes by number of votes.
+	for my $votee ( sort { @{$votinglist{$b}} <=> @{$votinglist{$a}} } keys %votinglist ) {
+		#if($votee != $tiebreak) { 
+			$display .= "<li class=\"voteList\">$votee: " . scalar(@{$votinglist{$votee}}) . " " . join(", ", @{$votinglist{$votee}}) . "</li>\n";
+			$totalvotes += scalar(@{$votinglist{$votee}});
+		#}
+	}
+	$display .= "</ul>\n";
+	# Display players that haven't voted yet
+	if($totalvotes < scalar(@players)-1) {
+		my @novote = ();
+		for my $i (0 .. scalar(@players)-2) {
+			if(!defined($voters{$players[$i]})) {
+				push @novote, $players[$i];
+				$totalvotes++;
+			}
+		}
+ 		$display .= '<p class="voteList">Yet to vote: ';
+		$display .= join(", ", @novote);
+		$display .= "</p>\n";
+	}
+	
+	$display .= "</div>";
+	if($totalvotes != scalar(@players)-1) {
+		print "<p>Warning TotalVotes: $totalvotes/" . (scalar(@players)-1) . "</p>";
+	}
+	return $display;
+}
+
 sub calcTiebreak {	
 	# Reset max votes & tiebreak
 	$maxvotes = 0;
@@ -142,6 +189,76 @@ sub calcTiebreak {
 	}
 }
 
+sub displayVoteLog
+{
+	my $votelog;
+	$votelog .= "[U]Voting Log[\U]";
+	foreach my $vote (@votinglog2)
+	{
+		my $votelogline = "Post [URL=\"" . $vote->{'posturl'} . "\"]" . $vote->{'postnum'} . "[/URL] ". $vote->{'voter'} . " voted for " . $vote->{'votee'} ;
+		if($vote->{'replacedvotepostnum'}) {
+			$votelogline .= " replacing previous vote in post " . $vote->{'replacedvotepostnum'} . " for " . $vote->{'replacedvotevotee'};
+			}
+		if($vote->{'majoritylocked'}) {
+			$votelog .= "[COLOR=\"Silver\"]" . $votelogline . "[/COLOR]\n";
+			} else {
+				if($vote->{'majoritylock'}) {
+					$votelog = "[COLOR=\"Red\"][i]" . $votelogline . " majority lock![/i][/COLOR]";
+				} else {
+					$votelog .= $votelogline . "\n";
+				}
+			}
+	}
+	
+	print $votelog;
+}
+
+sub htmlVoteLog
+{
+	my $votelog;
+	$votelog .= "<h2 class=\"votelogHeader\">Voting Log</h2>";
+	$votelog .= "<ul class=\"votelog\">\n";
+	foreach my $vote (@votinglog2)
+	{
+		my $class = "votelogline";
+		if($vote->{'majoritylock'}) {
+			$class .= " majoritylock";
+		}
+		if($vote->{'majoritylocked'}) {
+			$class .= " uncounted";
+		}
+
+		my $votelogline = "<li class=\"$class\">";
+		$votelogline .= "Post <a href=\"" . $vote->{'posturl'} . "\">" . $vote->{'postnum'} . "</a>";
+		$votelogline .= " " . $vote->{'voter'} . " voted for " . $vote->{'votee'};
+		if($vote->{'replacedvotepostnum'}) {
+			$votelogline .= " replacing previous vote in post " . $vote->{'replacedvotepostnum'} . " for " . $vote->{'replacedvotevotee'};
+			}
+		$votelogline .= "</li>\n";
+		$votelog .= $votelogline;
+	}
+	
+	return $votelog;
+}
+
+sub htmlHeader 
+{
+	return '<!DOCTYPE html>
+<html>
+<head>
+        <title>WW Knee Deep in the Dead Day 1</title>
+        <link rel="stylesheet" href="ww.css">
+</head>
+<body>
+<h1>WW Knee Deep in the Dead Day 1</h1>
+';
+}
+
+sub htmlFooter
+{
+	return "</body></html>";
+}
+
 sub updateVoteCount
 {	
 
@@ -151,15 +268,25 @@ sub updateVoteCount
 	
 	# Create tmp string to add to voting log
 	$votee = $playeraliases{lc $votee};
+	my %vote = ();
+	$vote{'posturl'} = $posturl;
+	$vote{'postnum'} = $postnum;
+	$vote{'voter'} = $voter;
+	$vote{'votee'} = $votee;
 	my $votinglogtmp = "Post [URL=\"" . $posturl . "\"]" . $postnum . "[/URL] ". $voter . " voted for " . $votee ;
+	
 	if(defined($voters{$voter})) {
-		# If this player already voted, delete previous vote
+		# If this player already voted, log that this replaces previous vote
+		$vote{'replacedvotepostnum'} = $voters{$voter}{'post'};
+		$vote{'replacedvotevotee'} = $voters{$voter}{'votee'};
 		$votinglogtmp .= " replacing previous vote in post " . $voters{$voter}{'post'} . " for " . $voters{$voter}{'votee'}; 
 	}
 	# If we previously reached majority lock, no longer count votes
 	if($maxvotes >= $majoritylock) {
-		# Add to voting log in silver
+		$vote{'majoritylocked'} = 1;
+		# but we do log them in silver to show voting after majority lock
 		$votinglog .= "[COLOR=\"Silver\"]" . $votinglogtmp . "[/COLOR]\n";
+		push @votinglog2, \%vote;
 		return;
 	}
 	# Start by finding and removing any existing vote by $voter
@@ -175,7 +302,6 @@ sub updateVoteCount
 		if($prevvotee eq $tiebreak) {
 			$maxvotes = 0;
 			calcTiebreak;
-			# Loop through votes
 		}
 	}
 	# Update voters list (hashed by voter name)
@@ -193,11 +319,13 @@ sub updateVoteCount
  		$maxvotes = scalar(@{$votinglist{$votee}});
  		$tiebreak = $votee;
  		if($maxvotes == $majoritylock) {
+ 			$vote{'majoritylock'} = 1;
  			$votinglogtmp = "[COLOR=\"Red\"][i]" . $votinglogtmp . " majority lock![/i][/COLOR]";
 			print "[COLOR=\"Red\"][i]Majority Lock reached: Post: " . $postnum . " " . $voter . " majority locked " . $votee . "[/i][/COLOR]\n\n";
  		}
  	}
  	$votinglog .= $votinglogtmp . "\n";
+ 	push @votinglog2, \%vote;
 }
 
 sub processPage
@@ -241,7 +369,7 @@ PostLoop:
 			my $voter = $posters[$i]->as_text();
 			# Confirm poster in players list
 			if(scalar(grep{/$voter/i} @players) != 1) {
-				print "Post $postnum: Ignoring post by non player! $voter\n";
+				$errors .= "Post $postnum: Ignoring post by non player! $voter\n";
 				next PostLoop;
 			}
 
@@ -269,8 +397,8 @@ PostLoop:
 			my @matches = ($boldedtext =~ m/$playerAliasSearch/gi);
 			
 			if(scalar(@matches == 0)) {
-				print "Post $postnum: No vote found in bolded text - missing alias? '";
-				print $boldedtext . "' " . $voter . "." . $postnum . "\n";
+				$errors .= "Post $postnum: No vote found in bolded text - missing alias? '";
+				$errors .= $boldedtext . "' " . $voter . "." . $postnum . "\n";
 			} else {
 				my $votee = undef;
 				foreach my $b (0 .. scalar(@matches)-1) {
@@ -287,8 +415,8 @@ PostLoop:
 					my $posturl = $site . $postnums[$i]->attr("href");
 					updateVoteCount($voter, $votee, $postnum, $posturl);
 				} else {
-					print "Post $postnum: Vote for unknown player found - missing alias? -- ";
-					print $votee . "(" . lc $votee . ") " . $voter . "." . $postnum . "\n";
+					$errors .= "Post $postnum: Vote for unknown player found - missing alias? -- ";
+					$errors .= $votee . "(" . lc $votee . ") " . $voter . "." . $postnum . "\n";
 				}
 			}
 		}		
@@ -319,8 +447,6 @@ my $processpages = 1;
 my $alive = scalar @players - 1;
 $majoritylock = int($alive/2) + 1;
 
-print "There are $alive possible wolves still living, so a majority of $majoritylock will send a neck to the chopping block\n";
-
 do {
 	$post = $lastpostprocessed;
 	my $urlpage=$urlbase . "/page-" . $page;
@@ -329,8 +455,20 @@ do {
 	$page++;
 } while($lastpostprocessed > $post);
 
-# Display the votes
-displayVotes();
+my $majoritymessage = "There are $alive people still alive, so a majority of $majoritylock will lynch someone!";
 
-# Display the stored voting log
-print $votinglog;
+# Display the votes 
+if ($output eq "html") {
+	my $html;
+	$html .= htmlHeader();
+	$html .= "<p class=\"majority\">$majoritymessage</p>";
+	$html .= htmlVotes();
+	$html .= htmlVoteLog();
+	$html .= htmlFooter();
+	print $html;
+} else {
+	print "$majoritymessage\n";
+	displayVotes();
+	displayVoteLog();
+}
+
