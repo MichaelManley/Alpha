@@ -78,7 +78,7 @@ my %playeraliases = (
 'astroboy' => 'Astroboy907',
 'comeagain' => 'Comeagain?',
 'comegain' => 'Comeagain?',
-'intel' => 'intell',
+'intel' => 'Intell',
 'no-vote' => 'no vote'
 );
 
