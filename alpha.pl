@@ -15,7 +15,7 @@ my $site="http://forums.macrumors.com/";
 # Thread ID (t=X from the forum thread URL)
 my $threadid=1884930;
 # Post number of the day start narrative post, vote counting will start with the post after this
-my $daystartpost=87;
+my $daystartpost=251;
 # Majority Lock Votes - leave this alone as it is calculated from players.
 my $majoritylock=1;
 
@@ -34,7 +34,7 @@ my @players = (
 'Don\'t panic',
 'Plutonius',
 'Koodauw',
-'chrmjenkins',
+#'chrmjenkins',
 'Melrose',
 'anjinha',
 'Queen of Spades',
@@ -45,7 +45,7 @@ my @players = (
 'Intell',
 'Tomorrow',
 'WoodNUFC',
-'Astroboy907',
+#'Astroboy907',
 #'twietee', 
 #'jimN',
 #'costabunny', 
@@ -247,11 +247,11 @@ sub htmlHeader
 	return '<!DOCTYPE html>
 <html>
 <head>
-        <title>WW Knee Deep in the Dead Day 1</title>
+        <title>WW Knee Deep in the Dead Night 2</title>
         <link rel="stylesheet" href="ww.css">
 </head>
 <body>
-<h1>WW Knee Deep in the Dead Day 1</h1>
+<h1>WW Knee Deep in the Dead Night 2</h1>
 ';
 }
 
