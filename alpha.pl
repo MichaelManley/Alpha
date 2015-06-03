@@ -23,7 +23,7 @@ my $majoritylock=1;
 my $urlbase="$site/threads/$threadid";
 my $daystartpage=int($daystartpost/25)+1;
 
-my $output="html";
+my $output="bbcode";
 
 # List of players
 my @players = (
@@ -75,6 +75,8 @@ my %playeraliases = (
 'plutonious'=>'Plutonius',
 'ufcgrad93'=>'ucfgrad93',
 'skepticalscribe'=>'Scepticalscribe',
+'sceptical scribe' => 'Scepticalscribe',
+'ss' => 'Scepticalscribe',
 'astroboy' => 'Astroboy907',
 'comeagain' => 'Comeagain?',
 'comegain' => 'Comeagain?',
@@ -91,7 +93,7 @@ my %votinglist = ();
 my @votinglog2 = ();
 my $maxvotes = 0;
 my $tiebreak = undef;
-my $errors;
+my @errors = ();
 
 sub displayVotes {
 	my $totalvotes = 0;
@@ -111,12 +113,14 @@ sub displayVotes {
 	# Display players that haven't voted yet
 	if($totalvotes < scalar(@players)-1) {
 		print "\nYet to vote: ";
+		my @novote = ();
 		for my $i (0 .. scalar(@players)-2) {
 			if(!defined($voters{$players[$i]})) {
-				print $players[$i] . ", ";
+				push @novote, $players[$i];
 				$totalvotes++;
 			}
 		}
+		print join(", ", @novote);
 	}
 	
 	print "\n\n";
@@ -162,7 +166,7 @@ sub htmlVotes
 	
 	$display .= "</div>";
 	if($totalvotes != scalar(@players)-1) {
-		print "<p>Warning TotalVotes: $totalvotes/" . (scalar(@players)-1) . "</p>";
+		$display .= "<p>Warning TotalVotes: $totalvotes/" . (scalar(@players)-1) . "</p>";
 	}
 	return $display;
 }
@@ -370,7 +374,7 @@ PostLoop:
 			my $voter = $posters[$i]->as_text();
 			# Confirm poster in players list
 			if(scalar(grep{/$voter/i} @players) != 1) {
-				$errors .= "Post $postnum: Ignoring post by non player! $voter\n";
+				push @errors, "Post $postnum: Ignoring post by non player! $voter";
 				next PostLoop;
 			}
 
@@ -398,8 +402,9 @@ PostLoop:
 			my @matches = ($boldedtext =~ m/$playerAliasSearch/gi);
 			
 			if(scalar(@matches == 0)) {
-				$errors .= "Post $postnum: No vote found in bolded text - missing alias? '";
-				$errors .= $boldedtext . "' " . $voter . "." . $postnum . "\n";
+				my $error .= "Post $postnum: No vote found in bolded text - missing alias? '";
+				$error .= $boldedtext . "' " . $voter . "." . $postnum;
+				push @errors, $error;
 			} else {
 				my $votee = undef;
 				foreach my $b (0 .. scalar(@matches)-1) {
@@ -416,8 +421,9 @@ PostLoop:
 					my $posturl = $site . $postnums[$i]->attr("href");
 					updateVoteCount($voter, $votee, $postnum, $posturl);
 				} else {
-					$errors .= "Post $postnum: Vote for unknown player found - missing alias? -- ";
-					$errors .= $votee . "(" . lc $votee . ") " . $voter . "." . $postnum . "\n";
+					my $error = "Post $postnum: Vote for unknown player found - missing alias? -- ";
+					$error .= $votee . "(" . lc $votee . ") " . $voter . "." . $postnum;
+					push @errors, $error;
 				}
 			}
 		}		
@@ -464,12 +470,13 @@ if ($output eq "html") {
 	$html .= "<p class=\"majority\">$majoritymessage</p>";
 	$html .= htmlVotes();
 	$html .= htmlVoteLog();
+	$html .= "<h2>Script Errors & Warnings</h2><p title=\"Errors\", class=\"errors\">" . join "<br>", @errors . "</p>";
 	$html .= htmlFooter();
 	print $html;
 } else {
 	print "$majoritymessage\n";
 	displayVotes();
 	displayVoteLog();
-	print $errors;
+	print join "\n", @errors;
 }
 
