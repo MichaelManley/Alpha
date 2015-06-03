@@ -23,7 +23,7 @@ my $majoritylock=1;
 my $urlbase="$site/threads/$threadid";
 my $daystartpage=int($daystartpost/25)+1;
 
-my $output="bbcode";
+my $output="html";
 
 # List of players
 my @players = (
@@ -470,7 +470,7 @@ if ($output eq "html") {
 	$html .= "<p class=\"majority\">$majoritymessage</p>";
 	$html .= htmlVotes();
 	$html .= htmlVoteLog();
-	$html .= "<h2>Script Errors & Warnings</h2><p title=\"Errors\", class=\"errors\">" . join "<br>", @errors . "</p>";
+	$html .= "<h2>Script Errors & Warnings</h2><p title=\"Errors\", class=\"errors\">" . join("<br>", @errors) . "</p>";
 	$html .= htmlFooter();
 	print $html;
 } else {
